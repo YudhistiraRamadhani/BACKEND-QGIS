@@ -53,20 +53,35 @@ class OrderController extends Controller
         $lat = (float) $request->user_lat;
         $lng = (float) $request->user_lng;
 
-        $orderId = DB::table('orders')->insertGetId([
-            'order_code' => 'ORD-' . strtoupper(Str::random(8)),
-            'user_id' => $request->user_id,
-            'workshop_id' => $request->workshop_id,
-            'mechanic_id' => $request->mechanic_id,
-            'status' => 'pending',
-            'problem' => $request->problem,
-            'basic_cost' => 25000,
-            'total_cost' => 25000,
-            'eta' => null,
-            'user_location' => DB::raw("ST_SetSRID(ST_MakePoint($lng, $lat), 4326)::geography"),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // MENGGUNAKAN DB TRANSACTION AGAR PROSES MEMBUAT ORDER DAN CHAT ROOM BERJALAN SEKALIGUS
+        $orderId = DB::transaction(function () use ($request, $lng, $lat) {
+
+            // 1. Masukkan data ke tabel orders
+            $id = DB::table('orders')->insertGetId([
+                'order_code' => 'ORD-' . strtoupper(Str::random(8)),
+                'user_id' => $request->user_id,
+                'workshop_id' => $request->workshop_id,
+                'mechanic_id' => $request->mechanic_id,
+                'status' => 'pending',
+                'problem' => $request->problem,
+                'basic_cost' => 25000,
+                'total_cost' => 25000,
+                'eta' => null,
+                'user_location' => DB::raw("ST_SetSRID(ST_MakePoint($lng, $lat), 4326)::geography"),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 2. KUNCI UTAMA: Otomatis buat rumah chat di tabel chat_rooms memakai ID order yang baru terbentuk
+            DB::table('chat_rooms')->insert([
+                'id' => $id, // ID chat_room disamakan dengan ID order agar sinkron dan konsisten
+                'order_id' => $id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return $id;
+        });
 
         return response()->json([
             'message' => 'Order berhasil dibuat',

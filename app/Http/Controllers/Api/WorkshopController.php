@@ -26,6 +26,47 @@ class WorkshopController extends Controller
             'message' => 'List bengkel berhasil diambil',
             'data' => $workshops,
         ]);
+
+    }
+    public function show($id)
+    {
+        try {
+            $workshop = DB::table('workshops')
+                ->selectRaw("
+                    id,
+                    name,
+                    address,
+                    rating,
+                    is_open,
+                    ST_Y(geom::geometry) AS latitude,
+                    ST_X(geom::geometry) AS longitude
+                ")
+                ->where('id', $id)
+                ->first(); // Mengambil satu baris data
+
+            // JIKA DATA TIDAK DITEMUKAN (ERROR 404)
+            if (!$workshop) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Bengkel dengan ID ' . $id . ' tidak ditemukan'
+                ], 404);
+            }
+
+            // JIKA DATA BERHASIL DITEMUKAN (STATUS 200)
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Detail bengkel berhasil diambil',
+                'data'    => $workshop,
+            ], 200);
+
+        } catch (\Exception $e) {
+            // JIKA TERJADI MASALAH DATABASE/SERVER (ERROR 500)
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Terjadi kesalahan internal pada server',
+                'debug'   => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function nearest(Request $request)
