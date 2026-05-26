@@ -41,4 +41,4 @@ RUN echo 'server { \
 EXPOSE 80
 
 # Perintah utama untuk menjalankan PHP-FPM dan Nginx secara bersamaan saat server menyala
-CMD php-fpm -D && nginx -g "daemon off;"
+CMD php artisan migrate --force && php-fpm -D && nginx -g "daemon off;"
