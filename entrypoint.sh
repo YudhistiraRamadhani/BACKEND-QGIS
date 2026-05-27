@@ -1,8 +1,14 @@
 #!/bin/sh
-# Menunggu database siap dan menjalankan migrasi
-echo "Menjalankan migrasi..."
+set -e
+
+# 1. Menjalankan migrasi database
+echo "Menjalankan migrasi database..."
 php artisan migrate --force
 
-# Menjalankan server
-echo "Menyalakan PHP-FPM dan Nginx..."
-php-fpm -D && nginx -g "daemon off;"
+# 2. Pastikan permission folder storage dan cache benar
+echo "Mengatur permission..."
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+# 3. Menjalankan Apache di foreground agar container tetap hidup
+echo "Menyalakan Apache..."
+exec apache2-foreground
