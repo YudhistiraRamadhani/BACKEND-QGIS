@@ -9,8 +9,11 @@ use App\Http\Controllers\Admin\OrderCrudController;
 
 Route::get('/', function () {
     return redirect('/admin');
+
 });
 
+Route::get('/login', function () {
+})->name('login');
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
