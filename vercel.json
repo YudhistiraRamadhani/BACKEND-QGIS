@@ -1,18 +1,15 @@
 {
     "version": 2,
-    "framework": null,
-    "functions": {
-        "api/index.php": {
-            "runtime": "vercel-php@0.6.2"
+    "builds": [
+        {
+            "src": "api/index.php",
+            "use": "@vercel/php@0.6.2"
         }
-    },
-    "installCommand": "composer install --no-interaction",
-    "buildCommand": "npm install --omit=dev && npm run build && composer install --no-dev --optimize-autoloader",
-    "outputDirectory": "public",
+    ],
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "/api/index.php"
+            "dest": "api/index.php"
         }
     ],
     "env": {
