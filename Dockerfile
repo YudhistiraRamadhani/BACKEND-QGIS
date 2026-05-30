@@ -1,6 +1,6 @@
 FROM php:8.1-fpm
 
-# 1. Install sistem dependensi
+# Install sistem dependensi termasuk libpq-dev untuk PostgreSQL
 RUN apt-get update && apt-get install -y \
     nginx \
     libpng-dev \
@@ -12,25 +12,24 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Install ekstensi PHP
+# Install ekstensi PHP (Gunakan pdo_pgsql)
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd pdo pdo_mysql pdo_pgsql
+    && docker-php-ext-install gd pdo pdo_pgsql
 
-# 3. Copy konfigurasi Nginx
+# Copy konfigurasi Nginx
 COPY ./docker/nginx.conf /etc/nginx/sites-available/default
 
-# 4. Optimasi Instalasi Composer (Caching Layer)
+# Copy aplikasi
 WORKDIR /var/www
 COPY composer.json composer.lock ./
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
-# 5. Copy seluruh aplikasi dan selesaikan install
 COPY . .
 RUN composer dump-autoload --optimize
 
-# 6. Set permissions
+# Set permissions
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
-# 7. Jalankan Migrasi & Service
+# Jalankan Migrasi & Service
 CMD php artisan migrate --force && service nginx start && php-fpm
