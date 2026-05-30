@@ -1,6 +1,6 @@
 FROM php:8.1-fpm
 
-# Install sistem dependensi
+# 1. Install sistem dependensi
 RUN apt-get update && apt-get install -y \
     nginx \
     libpng-dev \
@@ -9,26 +9,28 @@ RUN apt-get update && apt-get install -y \
     zip \
     git \
     unzip \
-    libpq-dev
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install ekstensi PHP
+# 2. Install ekstensi PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd pdo pdo_mysql pdo_pgsql
 
-# Copy konfigurasi Nginx
+# 3. Copy konfigurasi Nginx
 COPY ./docker/nginx.conf /etc/nginx/sites-available/default
 
-# Copy aplikasi
-COPY . /var/www
+# 4. Optimasi Instalasi Composer (Caching Layer)
 WORKDIR /var/www
-
-# Install Composer
+COPY composer.json composer.lock ./
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
-# Set permissions
+# 5. Copy seluruh aplikasi dan selesaikan install
+COPY . .
+RUN composer dump-autoload --optimize
+
+# 6. Set permissions
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
-# JALANKAN MIGRASI SAAT STARTUP (lebih aman)
-# Perintah ini akan menjalankan migrasi database, lalu menjalankan Nginx dan PHP-FPM
+# 7. Jalankan Migrasi & Service
 CMD php artisan migrate --force && service nginx start && php-fpm
