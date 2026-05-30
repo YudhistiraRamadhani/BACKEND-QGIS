@@ -26,12 +26,9 @@ WORKDIR /var/www
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
-# MENJALANKAN MIGRASI SAAT BUILD (Solusi pengganti Pre-Deploy Command)
-# Pastikan database sudah terhubung melalui ENV variables saat proses build ini
-RUN php artisan migrate --force
-
 # Set permissions
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
-# Jalankan Nginx dan PHP-FPM
-CMD service nginx start && php-fpm
+# JALANKAN MIGRASI SAAT STARTUP (lebih aman)
+# Perintah ini akan menjalankan migrasi database, lalu menjalankan Nginx dan PHP-FPM
+CMD php artisan migrate --force && service nginx start && php-fpm
