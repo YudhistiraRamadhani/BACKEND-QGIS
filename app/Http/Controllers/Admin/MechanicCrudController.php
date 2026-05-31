@@ -39,18 +39,22 @@ class MechanicCrudController extends Controller
         return view('admin.mechanics.create', compact('workshops'));
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'workshop_id' => 'required|exists:workshops,id',
-            'name' => 'required',
-            'email' => 'required|email|unique:users,email',
-            'phone' => 'nullable',
-            'password' => 'required|min:6',
-            'status' => 'required|in:open,close',
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-        ]);
+   public function store(Request $request)
+{
+    // Validasi
+    $request->validate([
+        'workshop_id' => 'required|exists:workshops,id',
+        'name' => 'required',
+        'email' => 'required|email|unique:users,email',
+        'password' => 'required|min:6',
+        'status' => 'required|in:open,close',
+        'latitude' => 'required|numeric|between:-90,90',
+        'longitude' => 'required|numeric|between:-180,180',
+    ]);
+
+    // Tambahkan try di sini untuk membungkus operasi database
+    try {
+        DB::beginTransaction();
 
         $userId = DB::table('users')->insertGetId([
             'name' => $request->name,
@@ -58,10 +62,15 @@ class MechanicCrudController extends Controller
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
             'role' => 'mechanic',
-            'fcm_token' => null,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // Cek apakah user berhasil diinsert
+        if (!$userId) {
+            DB::rollBack(); // Harus rollback sebelum return error
+            return response()->json(['status' => 'error', 'message' => 'Gagal menyimpan data user.'], 400);
+        }
 
         $lat = (float) $request->latitude;
         $lng = (float) $request->longitude;
@@ -75,12 +84,29 @@ class MechanicCrudController extends Controller
             'updated_at' => now(),
         ]);
 
+        // COMMIT dilakukan SETELAH semua operasi database selesai (bukan di tengah)
+        DB::commit();
+
         return redirect()->route('admin.mechanics.index')
             ->with('success', 'Data mekanik berhasil ditambahkan.');
+
+    } catch (\Exception $e) {
+        // Jika terjadi error (misal DB mati atau duplikat data), rollback semua
+        DB::rollBack();
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Terjadi kesalahan sistem.',
+            'error' => config('app.debug') ? $e->getMessage() : 'Internal Server Error'
+        ], 500);
     }
+}
+
 
     public function edit(string $id)
-    {
+{
+    try {
+        // Mengambil data dengan query builder
         $mechanic = DB::table('mechanics')
             ->join('users', 'mechanics.user_id', '=', 'users.id')
             ->selectRaw("
@@ -97,13 +123,35 @@ class MechanicCrudController extends Controller
             ->where('mechanics.id', $id)
             ->first();
 
-        abort_if(!$mechanic, 404);
+        // 1. Handling jika data tidak ditemukan (404)
+        if (!$mechanic) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Data mekanik tidak ditemukan.'
+            ], 404);
+        }
 
         $workshops = DB::table('workshops')->orderBy('name')->get();
 
-        return view('admin.mechanics.edit', compact('mechanic', 'workshops'));
-    }
+        // Jika request mengharapkan JSON (misal via AJAX/API)
+        if (request()->expectsJson()) {
+            return response()->json([
+                'status' => 'success',
+                'data' => compact('mechanic', 'workshops')
+            ], 200);
+        }
 
+        return view('admin.mechanics.edit', compact('mechanic', 'workshops'));
+
+    } catch (\Exception $e) {
+        // 2. Handling jika terjadi error pada database (500)
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Terjadi kesalahan pada server saat mengambil data.',
+            'debug' => config('app.debug') ? $e->getMessage() : null
+        ], 500);
+    }
+}
     public function update(Request $request, string $id)
     {
         $mechanic = DB::table('mechanics')->where('id', $id)->first();
