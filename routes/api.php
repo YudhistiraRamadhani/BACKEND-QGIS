@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\OrderItemController;
 use App\Http\Controllers\Api\LogController;
 use App\Http\Controllers\Admin\MechanicCrudController;
+use App\Http\Controllers\Admin\UserCrudController;
 use App\Http\Middleware;
 /*
 |--------------------------------------------------------------------------
@@ -52,6 +53,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Fitur Tambah Mekanik (Admin Office / Backoffice)
     Route::post('/mechanics/admin-store', [MechanicCrudController::class, 'store']);
+// Users Route Api
+Route::get('/users', [UserCrudController::class, 'index']);
+Route::post('/users', [UserCrudController::class, 'store']);
+Route::get('/users/{id}/edit', [UserCrudController::class, 'edit']);
+Route::put('/users/{id}', [UserCrudController::class, 'update']);
+Route::delete('/users/{id}', [UserCrudController::class, 'destroy']);
 
     // --- Kendaraan ---
     Route::get('/kendaraan', [KendaraanController::class, 'index']);
