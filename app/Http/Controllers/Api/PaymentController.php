@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -7,10 +8,18 @@ use Illuminate\Http\Request;
 use App\Models\Payment;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log; // Penting untuk debugging
+use Xendit\Configuration;
+use Xendit\Invoice\CreateInvoiceRequest;
+use Xendit\Invoice\InvoiceApi;
 
 class PaymentController extends Controller
 {
     // Menangani inisiasi transaksi/pembayaran pertama kali
+      public function __construct()
+    {
+        Configuration::setXenditKey(env('XENDIT_SECRET_KEY'));
+    }
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -49,40 +58,85 @@ class PaymentController extends Controller
     // Menerima kiriman data dari Webhook Payment Gateway (Xendit) secara real-time
     public function webhook(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'xendit_id' => 'required|string',
-            'status'    => 'required|string', // Contoh: SUCCESS, FAILED, EXPIRED
-        ]);
+        // 1. Log seluruh payload untuk debugging
+        Log::info('Webhook Xendit diterima: ', $request->all());
 
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'message' => 'Payload tidak valid'], 400);
+        // 2. Mengambil data dari struktur standar Xendit
+        // Event Invoice Paid biasanya ada di dalam key 'data'
+        $xenditId = $request->input('data.id') ?? $request->input('id');
+        $status   = $request->input('data.status') ?? $request->input('status');
+
+        if (!$xenditId || !$status) {
+            Log::warning('Webhook gagal: Payload tidak mengandung id atau status yang valid.');
+            return response()->json(['message' => 'Payload tidak valid'], 400);
         }
 
-        $payment = Payment::where('xendit_id', $request->xendit_id)->first();
+        // 3. Cari pembayaran berdasarkan ID yang dikirim Xendit
+        $payment = Payment::where('xendit_id', $xenditId)->first();
 
         if (!$payment) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Data transaksi tidak ditemukan'
-            ], 404);
+            Log::error('Webhook gagal: Pembayaran dengan xendit_id ' . $xenditId . ' tidak ditemukan di database.');
+            return response()->json(['message' => 'Data transaksi tidak ditemukan'], 404);
         }
 
-        // Petakan status dari payment gateway ke enum internal status Anda
-        $finalStatus = 'PENDING';
-        if ($request->status === 'SUCCESS') {
-            $finalStatus = 'PAID';
-        } elseif (in_array($request->status, ['FAILED', 'EXPIRED'])) {
-            $finalStatus = 'FAILED';
-        }
+        // 4. Update status
+        $finalStatus = ($status === 'PAID') ? 'PAID' : (($status === 'EXPIRED') ? 'FAILED' : 'PENDING');
 
         $payment->update([
             'status' => $finalStatus,
-            'updated_at' => now()
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Status pembayaran berhasil diperbarui melalui webhook'
-        ], 200);
+        Log::info('Webhook sukses: Pembayaran ' . $xenditId . ' diperbarui ke ' . $finalStatus);
+
+        return response()->json(['message' => 'Status diperbarui ke ' . $finalStatus], 200);
     }
+     public function createInvoice(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'order_id'    => 'required|exists:orders,id',
+            'amount'      => 'required|integer',
+            'method'      => 'required|string',
+            'payer_email' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $external_id = 'pay_' . Str::random(10);
+
+            $createInvoice = new CreateInvoiceRequest([
+                'external_id'      => $external_id,
+                'amount'           => $request->amount,
+                'payer_email'      => $request->payer_email,
+                'description'      => 'Pembayaran untuk Order #' . $request->order_id,
+                'invoice_duration' => 172800,
+            ]);
+
+            $apiInstance = new InvoiceApi();
+            $result = $apiInstance->createInvoice($createInvoice);
+
+            // Simpan ke database
+            $payment = Payment::create([
+                'order_id'     => $request->order_id,
+                'user_id'      => $request->user()->id ?? null, // Mengambil user_id jika ada sesi user
+                'xendit_id'    => $result['id'],
+                'method'       => $request->method,
+                'status'       => 'PENDING',
+                'amount'       => $request->amount,
+                'checkout_url' => $result['invoice_url'],
+            ]);
+
+            return response()->json([
+                'message' => 'Invoice berhasil dibuat',
+                'data'    => $payment
+            ], 201);
+
+        } catch (\Throwable $th) {
+            return response()->json(['error' => $th->getMessage()], 500);
+        }
+    }
+
 }
+

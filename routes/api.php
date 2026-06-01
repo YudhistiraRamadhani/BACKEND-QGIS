@@ -86,4 +86,13 @@ Route::delete('/users/{id}', [UserCrudController::class, 'destroy']);
 
     // --- Log API ---
     Route::get('/orders/{order_id}/logs', [LogController::class, 'index']);
+
+    Route::get('/mechanic/orders', [OrderController::class, 'mechanicOrders']);
+//--- order ---
+    Route::post('/orders/{id}/accept', [OrderController::class, 'accept']);
+    Route::post('/orders/{id}/arrive', [OrderController::class, 'arrive']);
+    Route::post('/orders/{id}/complete', [OrderController::class, 'complete']);
+
+    //--- terbaru ---/
+    Route::patch('/mechanics/{id}/status',[MechanicController::class, 'updateStatus']);
 });

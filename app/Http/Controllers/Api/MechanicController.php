@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
+use App\Models\Mechanic;
 class MechanicController extends Controller
 {
     public function index()
@@ -188,6 +188,23 @@ class MechanicController extends Controller
         return response()->json([
             'message' => 'Mekanik terdekat berhasil diambil',
             'data' => $mechanics,
+        ]);
+    }
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:open,close',
+        ]);
+
+        $mechanic = Mechanic::findOrFail($id);
+
+        $mechanic->status = $request->status;
+        $mechanic->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status berhasil diperbarui',
+            'status' => $mechanic->status,
         ]);
     }
 }
