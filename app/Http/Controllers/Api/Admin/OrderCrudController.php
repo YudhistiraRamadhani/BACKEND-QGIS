@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
@@ -79,5 +79,126 @@ class OrderCrudController extends Controller
         abort_if(!$order, 404);
 
         return view('admin.orders.show', compact('order'));
+    }
+
+     public function accept($id)
+    {
+        $order = DB::table('orders')
+            ->where('id', $id)
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Order tidak ditemukan',
+            ], 404);
+        }
+
+        // Cek apakah masih ada order aktif
+        $activeOrder = DB::table('orders')
+            ->whereIn('status', [
+                'on_the_way',
+                'service'
+            ])
+            ->first();
+
+        if ($activeOrder) {
+            return response()->json([
+                'message' => 'Masih ada order yang sedang dikerjakan',
+            ], 422);
+        }
+
+        DB::table('orders')
+            ->where('id', $id)
+            ->update([
+                'status' => 'on_the_way',
+                'updated_at' => now(),
+            ]);
+
+        return response()->json([
+            'message' => 'Order diterima, mekanik menuju lokasi',
+        ]);
+    }
+
+    public function arrive($id)
+    {
+        $order = DB::table('orders')
+            ->where('id', $id)
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Order tidak ditemukan',
+            ], 404);
+        }
+
+        DB::table('orders')
+            ->where('id', $id)
+            ->update([
+                'status' => 'service',
+                'updated_at' => now(),
+            ]);
+
+        return response()->json([
+            'message' => 'Mekanik tiba di lokasi dan servis dimulai',
+        ]);
+    }
+
+    public function complete($id)
+    {
+        $order = DB::table('orders')
+            ->where('id', $id)
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Order tidak ditemukan',
+            ], 404);
+        }
+
+        DB::table('orders')
+            ->where('id', $id)
+            ->update([
+                'status' => 'completed',
+                'updated_at' => now(),
+            ]);
+
+        return response()->json([
+            'message' => 'Servis selesai',
+        ]);
+    }
+    public function mechanicOrders()
+    {
+        $orders = DB::table('orders')
+            ->join('users', 'orders.user_id', '=', 'users.id')
+            ->leftJoin('mechanics', 'orders.mechanic_id', '=', 'mechanics.id')
+            ->whereIn('orders.status', [
+                'pending',
+                'on_the_way',
+                'service'
+            ])
+            ->select(
+                'orders.id',
+                'orders.order_code',
+                'orders.status',
+                'orders.problem',
+                'orders.basic_cost',
+                'orders.total_cost',
+                'orders.created_at',
+
+                'users.name as customer_name',
+                'users.phone as customer_phone',
+
+                DB::raw('ST_Y(orders.user_location::geometry) as user_latitude'),
+                DB::raw('ST_X(orders.user_location::geometry) as user_longitude'),
+
+                'mechanics.id as mechanic_id'
+            )
+            ->orderByDesc('orders.created_at')
+            ->get();
+
+        return response()->json([
+            'message' => 'Daftar order berhasil diambil',
+            'data' => $orders
+        ]);
     }
 }
