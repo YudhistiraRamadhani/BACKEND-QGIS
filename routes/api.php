@@ -2,10 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\Admin\WorkshopCrudController;
-use App\Http\Controllers\Api\Admin\MechanicCrudController;
+use App\Http\Controllers\Api\WorkshopController;
+use App\Http\Controllers\Api\MechanicController;
 use App\Http\Controllers\Api\KendaraanController;
-use App\Http\Controllers\Api\Admin\OrderCrudController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ChatRoomController;
 use App\Http\Controllers\Api\ChatMessageController;
 use App\Http\Controllers\Api\PaymentController;
@@ -37,22 +37,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // --- Workshops (Bengkel) ---
-    Route::get('/workshops', [WorkshopCrudController::class, 'index']);
-    Route::get('/workshops/open', [WorkshopCrudController::class, 'open']);
-    Route::get('/workshops/top-rated', [WorkshopCrudController::class, 'topRated']);
-    Route::get('/workshops/nearest', [WorkshopCrudController::class, 'nearest']);
-    Route::get('/workshops/filter', [WorkshopCrudController::class, 'filter']);
-    Route::get('/workshops/{id}', [WorkshopCrudController::class, 'show']);
-    Route::get('/workshops/{workshopId}/mechanics', [MechanicCrudController::class, 'byWorkshop']);
+    Route::get('/workshops', [WorkshopController::class, 'index']);
+    Route::get('/workshops/open', [WorkshopController::class, 'open']);
+    Route::get('/workshops/top-rated', [WorkshopController::class, 'topRated']);
+    Route::get('/workshops/nearest', [WorkshopController::class, 'nearest']);
+    Route::get('/workshops/filter', [WorkshopController::class, 'filter']);
+    Route::get('/workshops/{id}', [WorkshopController::class, 'show']);
+    Route::get('/workshops/{workshopId}/mechanics', [MechanicController::class, 'byWorkshop']);
 
     // --- Mechanics (Mekanik) ---
-    Route::get('/mechanics', [MechanicCrudController::class, 'index']);
-    Route::get('/mechanics/nearest', [MechanicCrudController::class, 'nearest']);
-    Route::get('/mechanics/{id}/location', [MechanicCrudController::class, 'showLocation']);
-    Route::patch('/mechanics/{id}/location', [MechanicCrudController::class, 'updateLocation']);
+    Route::get('/mechanics', [MechanicController::class, 'index']);
+    Route::get('/mechanics/nearest', [MechanicController::class, 'nearest']);
+    Route::get('/mechanics/{id}/location', [MechanicController::class, 'showLocation']);
+    Route::patch('/mechanics/{id}/location', [MechanicController::class, 'updateLocation']);
 
     // Fitur Tambah Mekanik (Admin Office / Backoffice)
-    Route::post('/mechanics/admin-store', [MechanicCrudController::class, 'store']);
+    Route::post('/mechanics/admin-store', [MechanicController::class, 'store']);
 // Users Route Api
 Route::get('/users', [UserCrudController::class, 'index']);
 Route::post('/users', [UserCrudController::class, 'store']);
@@ -66,8 +66,8 @@ Route::delete('/users/{id}', [UserCrudController::class, 'destroy']);
     Route::get('/kendaraan/{id}', [KendaraanController::class, 'show']);
 
     // --- Orders & Tracking (Duplikasi Sudah Dihapus) ---
-    Route::post('/orders', [OrderCrudController::class, 'store']);
-    Route::get('/orders/{id}/tracking', [OrderCrudController::class, 'tracking']);
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/orders/{id}/tracking', [OrderController::class, 'tracking']);
 
     // --- Chat Room API ---
     Route::post('/chat-rooms', [ChatRoomController::class, 'store']);
@@ -89,12 +89,12 @@ Route::delete('/users/{id}', [UserCrudController::class, 'destroy']);
 
     // Route::get('/mechanic/orders', [OrderCrudController::class, 'mechanicOrders'])
 //--- order ---
-    Route::post('/orders/{id}/accept', [OrderCrudController::class, 'accept']);
-    Route::post('/orders/{id}/arrive', [OrderCrudController::class, 'arrive']);
-    Route::post('/orders/{id}/complete', [OrderCrudController::class, 'complete']);
+    Route::post('/orders/{id}/accept', [OrderController::class, 'accept']);
+    Route::post('/orders/{id}/arrive', [OrderController::class, 'arrive']);
+    Route::post('/orders/{id}/complete', [OrderController::class, 'complete']);
 
     //--- terbaru ---/
-    Route::patch('/mechanics/{id}/status',[MechanicCrudController::class, 'updateStatus']);
-    Route::get('/mechanic/orders', [OrderCrudController::class, 'mechanicOrders']);
+    Route::patch('/mechanics/{id}/status',[MechanicController::class, 'updateStatus']);
+    Route::get('/mechanic/orders', [OrderController::class, 'mechanicOrders']);
 
 });
