@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Mechanic;
-
 class MechanicController extends Controller
 {
     public function index()
@@ -191,7 +190,6 @@ class MechanicController extends Controller
             'data' => $mechanics,
         ]);
     }
-
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
