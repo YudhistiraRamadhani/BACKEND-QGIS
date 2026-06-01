@@ -159,6 +159,7 @@ class OrderController extends Controller
             'data' => $tracking,
         ]);
     }
+
     public function accept($id)
     {
         $order = DB::table('orders')
