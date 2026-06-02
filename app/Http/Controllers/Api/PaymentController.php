@@ -67,38 +67,38 @@ class PaymentController extends Controller
         }
     }
 
+
     public function webhook(Request $request)
     {
-        // 1. Log seluruh payload untuk debugging
-        Log::info('Webhook Xendit diterima: ', $request->all());
+        // 1. Mengambil xendit_id dari body request secara spesifik
+        $xenditId = $request->input('xendit_id');
 
-        // 2. Mengambil data dari struktur standar Xendit
-        // Event Invoice Paid biasanya ada di dalam key 'data'
-        $xenditId = $request->input('data.id') ?? $request->input('id');
-        $status   = $request->input('data.status') ?? $request->input('status');
-
-        if (!$xenditId || !$status) {
-            Log::warning('Webhook gagal: Payload tidak mengandung id atau status yang valid.');
-            return response()->json(['message' => 'Payload tidak valid'], 400);
+        // 2. Validasi input: memastikan xendit_id dikirimkan
+        if (!$xenditId) {
+            return response()->json([
+                'message' => 'xendit_id diperlukan dalam body request'
+            ], 400);
         }
 
-        // 3. Cari pembayaran berdasarkan ID yang dikirim Xendit
+        // 3. Cari pembayaran berdasarkan xendit_id di database
         $payment = Payment::where('xendit_id', $xenditId)->first();
 
+        // 4. Jika data tidak ditemukan, kembalikan response 404
         if (!$payment) {
-            Log::error('Webhook gagal: Pembayaran dengan xendit_id ' . $xenditId . ' tidak ditemukan di database.');
-            return response()->json(['message' => 'Data transaksi tidak ditemukan'], 404);
+            return response()->json([
+                'message' => 'Data transaksi dengan xendit_id tersebut tidak ditemukan'
+            ], 404);
         }
 
-        // 4. Update status
-        $finalStatus = ($status === 'PAID') ? 'PAID' : (($status === 'EXPIRED') ? 'FAILED' : 'PENDING');
-
-        $payment->update([
-            'status' => $finalStatus,
-        ]);
-
-        Log::info('Webhook sukses: Pembayaran ' . $xenditId . ' diperbarui ke ' . $finalStatus);
-
-        return response()->json(['message' => 'Status diperbarui ke ' . $finalStatus], 200);
+        // 5. Mengembalikan status yang ada di database saat ini
+        return response()->json([
+            'message' => 'Data ditemukan',
+            'data' => [
+                'xendit_id' => $payment->xendit_id,
+                'status'    => $payment->status
+            ]
+        ], 200);
     }
+
 }
+
