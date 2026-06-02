@@ -79,7 +79,7 @@ Route::delete('/users/{id}', [UserCrudController::class, 'destroy']);
 
     // --- Payment API (Hanya Request Invoice yang Butuh Auth) ---
     Route::post('/payments', [PaymentController::class, 'store']);
-
+    Route::post('/payments/create-invoice', [PaymentController::class, 'createInvoice']);
     // --- Order Item API ---
     Route::get('/orders/{order_id}/items', [OrderItemController::class, 'index']);
     Route::post('/order-items', [OrderItemController::class, 'store']);
