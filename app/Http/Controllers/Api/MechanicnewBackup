@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Mechanic;
-
 class MechanicController extends Controller
 {
     public function index()
@@ -191,7 +190,6 @@ class MechanicController extends Controller
             'data' => $mechanics,
         ]);
     }
-
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
@@ -209,29 +207,4 @@ class MechanicController extends Controller
             'status' => $mechanic->status,
         ]);
     }
-
-public function updateProfile(Request $request)
-{
-    $request->validate([
-        'name' => 'required',
-        'email' => 'required|email',
-        'phone' => 'required',
-    ]);
-
-    $user = auth()->user();
-
-    DB::table('users')
-        ->where('id', $user->id)
-        ->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'updated_at' => now(),
-        ]);
-
-    return response()->json([
-        'message' => 'Profil berhasil diperbarui'
-    ]);
-}
-
 }

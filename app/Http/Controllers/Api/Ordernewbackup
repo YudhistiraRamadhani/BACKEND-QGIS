@@ -160,54 +160,43 @@ class OrderController extends Controller
         ]);
     }
 
-public function accept($id)
-{
-    $order = DB::table('orders')
-        ->where('id', $id)
-        ->first();
+    public function accept($id)
+    {
+        $order = DB::table('orders')
+            ->where('id', $id)
+            ->first();
 
-    if (!$order) {
+        if (!$order) {
+            return response()->json([
+                'message' => 'Order tidak ditemukan',
+            ], 404);
+        }
+
+        // Cek apakah masih ada order aktif
+        $activeOrder = DB::table('orders')
+            ->whereIn('status', [
+                'on_the_way',
+                'service'
+            ])
+            ->first();
+
+        if ($activeOrder) {
+            return response()->json([
+                'message' => 'Masih ada order yang sedang dikerjakan',
+            ], 422);
+        }
+
+        DB::table('orders')
+            ->where('id', $id)
+            ->update([
+                'status' => 'on_the_way',
+                'updated_at' => now(),
+            ]);
+
         return response()->json([
-            'message' => 'Order tidak ditemukan',
-        ], 404);
-    }
-
-    $mechanic = DB::table('mechanics')
-        ->where('user_id', auth()->id())
-        ->first();
-
-    if (!$mechanic) {
-        return response()->json([
-            'message' => 'Mekanik tidak ditemukan',
-        ], 404);
-    }
-
-    // Cek order aktif milik mekanik yang login saja
-    $activeOrder = DB::table('orders')
-        ->where('mechanic_id', $mechanic->id)
-        ->whereIn('status', [
-            'on_the_way',
-            'service'
-        ])
-        ->first();
-
-    if ($activeOrder) {
-        return response()->json([
-            'message' => 'Masih ada order yang sedang dikerjakan',
-        ], 422);
-    }
-
-    DB::table('orders')
-        ->where('id', $id)
-        ->update([
-            'status' => 'on_the_way',
-            'updated_at' => now(),
+            'message' => 'Order diterima, mekanik menuju lokasi',
         ]);
-
-    return response()->json([
-        'message' => 'Order diterima, mekanik menuju lokasi',
-    ]);
-}
+    }
 
     public function arrive($id)
     {
@@ -256,62 +245,39 @@ public function accept($id)
             'message' => 'Servis selesai',
         ]);
     }
-public function mechanicOrders()
-{
+    public function mechanicOrders()
+    {
+        $orders = DB::table('orders')
+            ->join('users', 'orders.user_id', '=', 'users.id')
+            ->leftJoin('mechanics', 'orders.mechanic_id', '=', 'mechanics.id')
+            ->whereIn('orders.status', [
+                'pending',
+                'on_the_way',
+                'service'
+            ])
+            ->select(
+                'orders.id',
+                'orders.order_code',
+                'orders.status',
+                'orders.problem',
+                'orders.basic_cost',
+                'orders.total_cost',
+                'orders.created_at',
 
-    $mechanic = DB::table('mechanics')
-        ->where('user_id', auth()->id())
-        ->first();
+                'users.name as customer_name',
+                'users.phone as customer_phone',
 
-    if (!$mechanic) {
+                DB::raw('ST_Y(orders.user_location::geometry) as user_latitude'),
+                DB::raw('ST_X(orders.user_location::geometry) as user_longitude'),
+
+                'mechanics.id as mechanic_id'
+            )
+            ->orderByDesc('orders.created_at')
+            ->get();
+
         return response()->json([
-            'message' => 'Mekanik tidak ditemukan'
-        ], 404);
+            'message' => 'Daftar order berhasil diambil',
+            'data' => $orders
+        ]);
     }
-
-    $orders = DB::table('orders')
-        ->join('users', 'orders.user_id', '=', 'users.id')
-        ->where('orders.mechanic_id', $mechanic->id)
-        ->whereIn('orders.status', [
-            'pending',
-            'on_the_way',
-            'service'
-        ])
-        ->select(
-            'orders.id',
-            'orders.order_code',
-            'orders.status',
-            'orders.problem',
-            'orders.basic_cost',
-            'orders.total_cost',
-            'orders.created_at',
-            'users.name as customer_name',
-            'users.phone as customer_phone',
-            DB::raw('ST_Y(orders.user_location::geometry) as user_latitude'),
-            DB::raw('ST_X(orders.user_location::geometry) as user_longitude')
-        )
-        ->orderByDesc('orders.created_at')
-        ->get();
-
-    return response()->json([
-        'message' => 'Daftar order berhasil diambil',
-        'data' => $orders
-    ]);
-}
-
-public function mechanicStatistic()
-{
-    $completedOrder = DB::table('orders')
-        ->where('status', 'completed')
-        ->count();
-
-    $income = DB::table('orders')
-        ->where('status', 'completed')
-        ->sum('total_cost');
-
-    return response()->json([
-        'completed_order' => $completedOrder,
-        'income' => $income,
-    ]);
-}
 }

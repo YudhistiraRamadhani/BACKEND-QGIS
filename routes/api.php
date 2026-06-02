@@ -50,7 +50,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/mechanics/nearest', [MechanicController::class, 'nearest']);
     Route::get('/mechanics/{id}/location', [MechanicController::class, 'showLocation']);
     Route::patch('/mechanics/{id}/location', [MechanicController::class, 'updateLocation']);
-
+   Route::patch('/mechanics/{id}/status',[MechanicController::class, 'updateStatus']);
+    Route::put('/profile/update',[MechanicController::class, 'updateProfile']);
+        Route::get('/mechanic/statistic', [OrderController::class, 'mechanicStatistic']);
     // Fitur Tambah Mekanik (Admin Office / Backoffice)
     Route::post('/mechanics/admin-store', [MechanicController::class, 'store']);
 // Users Route Api

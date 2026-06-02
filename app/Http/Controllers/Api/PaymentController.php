@@ -94,7 +94,6 @@ class PaymentController extends Controller
             return response()->json(['error' => $th->getMessage()], 500);
         }
     }
-
     public function webhook(Request $request)
     {
         // 1. Mengambil xendit_id dari body
