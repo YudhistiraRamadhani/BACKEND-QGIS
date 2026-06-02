@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -15,82 +14,12 @@ use Xendit\Invoice\InvoiceApi;
 
 class PaymentController extends Controller
 {
-    // Menangani inisiasi transaksi/pembayaran pertama kali
-      public function __construct()
+    public function __construct()
     {
         Configuration::setXenditKey(env('XENDIT_SECRET_KEY'));
     }
-    public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'order_id' => 'required|integer|exists:orders,id',
-            'method'   => 'required|string', // Isi sesuai enum payment_method (Contoh: CASH, E-WALLET)
-            'amount'   => 'required|integer|min:1',
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 400);
-        }
-
-        // Simulasi integrasi kode payment gateway (misal Xendit)
-        $mockXenditId = 'xnd_' . Str::random(12);
-        $mockCheckoutUrl = 'https://checkout.xendit.co/v2/invoice/' . Str::random(8);
-
-        $payment = Payment::create([
-            'order_id'     => $request->order_id,
-            'xendit_id'    => $mockXenditId,
-            'method'       => $request->method,
-            'status'       => 'PENDING', // Status awal invoice
-            'amount'       => $request->amount,
-            'checkout_url' => $mockCheckoutUrl,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Invoice pembayaran berhasil dibuat',
-            'data' => $payment
-        ], 201);
-    }
-
-    // Menerima kiriman data dari Webhook Payment Gateway (Xendit) secara real-time
-    public function webhook(Request $request)
-    {
-        // 1. Log seluruh payload untuk debugging
-        Log::info('Webhook Xendit diterima: ', $request->all());
-
-        // 2. Mengambil data dari struktur standar Xendit
-        // Event Invoice Paid biasanya ada di dalam key 'data'
-        $xenditId = $request->input('data.id') ?? $request->input('id');
-        $status   = $request->input('data.status') ?? $request->input('status');
-
-        if (!$xenditId || !$status) {
-            Log::warning('Webhook gagal: Payload tidak mengandung id atau status yang valid.');
-            return response()->json(['message' => 'Payload tidak valid'], 400);
-        }
-
-        // 3. Cari pembayaran berdasarkan ID yang dikirim Xendit
-        $payment = Payment::where('xendit_id', $xenditId)->first();
-
-        if (!$payment) {
-            Log::error('Webhook gagal: Pembayaran dengan xendit_id ' . $xenditId . ' tidak ditemukan di database.');
-            return response()->json(['message' => 'Data transaksi tidak ditemukan'], 404);
-        }
-
-        // 4. Update status
-        $finalStatus = ($status === 'PAID') ? 'PAID' : (($status === 'EXPIRED') ? 'FAILED' : 'PENDING');
-
-        $payment->update([
-            'status' => $finalStatus,
-        ]);
-
-        Log::info('Webhook sukses: Pembayaran ' . $xenditId . ' diperbarui ke ' . $finalStatus);
-
-        return response()->json(['message' => 'Status diperbarui ke ' . $finalStatus], 200);
-    }
-     public function createInvoice(Request $request)
+    public function createInvoice(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'order_id'    => 'required|exists:orders,id',
@@ -138,5 +67,38 @@ class PaymentController extends Controller
         }
     }
 
-}
+    public function webhook(Request $request)
+    {
+        // 1. Log seluruh payload untuk debugging
+        Log::info('Webhook Xendit diterima: ', $request->all());
 
+        // 2. Mengambil data dari struktur standar Xendit
+        // Event Invoice Paid biasanya ada di dalam key 'data'
+        $xenditId = $request->input('data.id') ?? $request->input('id');
+        $status   = $request->input('data.status') ?? $request->input('status');
+
+        if (!$xenditId || !$status) {
+            Log::warning('Webhook gagal: Payload tidak mengandung id atau status yang valid.');
+            return response()->json(['message' => 'Payload tidak valid'], 400);
+        }
+
+        // 3. Cari pembayaran berdasarkan ID yang dikirim Xendit
+        $payment = Payment::where('xendit_id', $xenditId)->first();
+
+        if (!$payment) {
+            Log::error('Webhook gagal: Pembayaran dengan xendit_id ' . $xenditId . ' tidak ditemukan di database.');
+            return response()->json(['message' => 'Data transaksi tidak ditemukan'], 404);
+        }
+
+        // 4. Update status
+        $finalStatus = ($status === 'PAID') ? 'PAID' : (($status === 'EXPIRED') ? 'FAILED' : 'PENDING');
+
+        $payment->update([
+            'status' => $finalStatus,
+        ]);
+
+        Log::info('Webhook sukses: Pembayaran ' . $xenditId . ' diperbarui ke ' . $finalStatus);
+
+        return response()->json(['message' => 'Status diperbarui ke ' . $finalStatus], 200);
+    }
+}
