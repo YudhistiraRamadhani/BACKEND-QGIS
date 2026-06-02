@@ -67,30 +67,39 @@ class PaymentController extends Controller
         }
     }
 
-
     public function webhook(Request $request)
     {
-        // 1. Mengambil xendit_id dari body request secara spesifik
-        $xenditId = $request->input('xendit_id');
+        // 1. Mengambil xendit_id dari body
+        $xenditId = $request->input('xendit_id') ?? $request->input('id');
 
-        // 2. Validasi input: memastikan xendit_id dikirimkan
         if (!$xenditId) {
-            return response()->json([
-                'message' => 'xendit_id diperlukan dalam body request'
-            ], 400);
+            return response()->json(['message' => 'xendit_id atau id diperlukan'], 400);
         }
 
-        // 3. Cari pembayaran berdasarkan xendit_id di database
+        // 2. Cari pembayaran berdasarkan xendit_id
         $payment = Payment::where('xendit_id', $xenditId)->first();
 
-        // 4. Jika data tidak ditemukan, kembalikan response 404
         if (!$payment) {
-            return response()->json([
-                'message' => 'Data transaksi dengan xendit_id tersebut tidak ditemukan'
-            ], 404);
+            return response()->json(['message' => 'Data transaksi tidak ditemukan'], 404);
         }
 
-        // 5. Mengembalikan status yang ada di database saat ini
+        // 3. LOGIKA OTOMATIS:
+        // Jika request membawa data status dari Xendit, update statusnya.
+        if ($request->has('status')) {
+            $newStatus = $request->input('status');
+
+            // Konversi status Xendit ke status internal Anda
+            $finalStatus = ($newStatus === 'PAID') ? 'PAID' : 'FAILED';
+
+            $payment->update(['status' => $finalStatus]);
+
+            Log::info("Webhook otomatis: Transaksi {$xenditId} diperbarui ke {$finalStatus}");
+
+            return response()->json(['message' => 'Status berhasil diupdate', 'status' => $finalStatus], 200);
+        }
+
+        // 4. LOGIKA MANUAL (Pengecekan via Postman):
+        // Jika tidak ada data status di body, cukup tampilkan status saat ini.
         return response()->json([
             'message' => 'Data ditemukan',
             'data' => [
