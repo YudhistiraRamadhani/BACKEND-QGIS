@@ -22,10 +22,11 @@ class PaymentController extends Controller
     public function createInvoice(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'order_id'    => 'required|exists:orders,id',
-            'amount'      => 'required|integer',
-            'method'      => 'required|string',
-            'payer_email' => 'required|email',
+            'order_id'     => 'required|exists:orders,id',
+            'amount'       => 'required|integer',
+            'method'       => 'required|string',
+            'payer_email'  => 'required|email',
+            'redirect_url' => 'nullable|string', // 🌟 Menampung URL port dinamis dari Flutter Web
         ]);
 
         if ($validator->fails()) {
@@ -35,13 +36,40 @@ class PaymentController extends Controller
         try {
             $external_id = 'pay_' . Str::random(10);
 
-            $createInvoice = new CreateInvoiceRequest([
+            // LOGIKA 1: PEMETAAN CHANNEL RESMI XENDIT (Atasi RTO GoPay & Double Input)
+            $methodFromFlutter = strtolower($request->method);
+            $preferredChannels = [];
+
+            if ($methodFromFlutter === 'qris') {
+                $preferredChannels = ['QRIS'];
+            } elseif (in_array($methodFromFlutter, ['gopay', 'ovo', 'dana'])) {
+                // Mengubah otomatis 'gopay' -> 'ID_GOPAY' untuk mencegah RTO
+                $preferredChannels = ['ID_' . strtoupper($methodFromFlutter)];
+            } elseif (in_array($methodFromFlutter, ['bca', 'mandiri'])) {
+                // Mengubah otomatis 'bca' -> 'BCA_VA'
+                $preferredChannels = [strtoupper($methodFromFlutter) . '_VA'];
+            }
+
+            // 🌟 LOGIKA 2: REDIRECT URL DINAMIS (Atasi Balik Aplikasi Secara Manual)
+            // Jika Flutter mengirimkan URL port, gunakan itu. Jika kosong, gunakan default project
+            $finalRedirectUrl = $request->input('redirect_url') ?? 'http://localhost:8080/#/payment-success';
+
+            $invoicePayload = [
                 'external_id'      => $external_id,
                 'amount'           => $request->amount,
                 'payer_email'      => $request->payer_email,
                 'description'      => 'Pembayaran untuk Order #' . $request->order_id,
                 'invoice_duration' => 172800,
-            ]);
+
+                // 🚀 Pengunci Channel: Memaksa Xendit HANYA menampilkan metode pilihan user dari Flutter
+                'payment_methods'  => $preferredChannels,
+
+                // 🚀 Pengarah Otomatis: Begitu pembayaran kelar, tab Xendit akan redirect ke port Flutter kamu
+                'success_redirect_url' => $finalRedirectUrl,
+                'failure_redirect_url' => $finalRedirectUrl,
+            ];
+
+            $createInvoice = new CreateInvoiceRequest($invoicePayload);
 
             $apiInstance = new InvoiceApi();
             $result = $apiInstance->createInvoice($createInvoice);
@@ -49,7 +77,7 @@ class PaymentController extends Controller
             // Simpan ke database
             $payment = Payment::create([
                 'order_id'     => $request->order_id,
-                'user_id'      => $request->user()->id ?? null, // Mengambil user_id jika ada sesi user
+                'user_id'      => $request->user()->id ?? null,
                 'xendit_id'    => $result['id'],
                 'method'       => $request->method,
                 'status'       => 'PENDING',
