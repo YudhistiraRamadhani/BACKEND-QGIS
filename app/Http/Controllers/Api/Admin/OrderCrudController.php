@@ -27,14 +27,7 @@ class OrderCrudController extends Controller
                 'workshops.name as workshop_name',
                 'mechanic_user.name as mechanic_name'
             )
-            ->selectRaw("
-                ST_Y(orders.user_location::geometry) AS user_latitude,
-                ST_X(orders.user_location::geometry) AS user_longitude,
-                ST_Y(mechanics.current_position::geometry) AS mechanic_latitude,
-                ST_X(mechanics.current_position::geometry) AS mechanic_longitude,
-                ST_Y(workshops.geom::geometry) AS workshop_latitude,
-                ST_X(workshops.geom::geometry) AS workshop_longitude
-            ")
+           
             ->orderByDesc('orders.id')
             ->get();
 
