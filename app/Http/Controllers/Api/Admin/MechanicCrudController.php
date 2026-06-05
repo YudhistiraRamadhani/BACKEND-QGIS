@@ -29,7 +29,10 @@ class MechanicCrudController extends Controller
             ->orderBy('mechanics.id')
             ->get();
 
-        return view('admin.mechanics.index', compact('mechanics'));
+        // return view('admin.mechanics.index', compact('mechanics'))
+
+        $workshops = DB::table('workshops')->orderBy('name')->get();
+        return view('admin.mechanics.index', compact('mechanics', 'workshops'));
     }
 
     public function create()

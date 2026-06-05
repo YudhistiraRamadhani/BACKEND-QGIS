@@ -12,7 +12,7 @@ class UserCrudController extends Controller
     public function index()
     {
         $users = DB::table('users')
-            ->orderBy('id')
+            ->orderByDesc('created_at')
             ->get();
 
         return view('admin.users.index', compact('users'));
