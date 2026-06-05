@@ -1,200 +1,83 @@
 @extends('admin.layout')
 
 @section('content')
-    <style>
-        .tracking-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-        .order-info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-        .info-box {
-            background: rgba(0,0,0,0.02);
-            padding: 16px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-        }
-        .info-label {
-            font-size: 12px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-        .info-value {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-        .badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .badge-primary { background: rgba(217, 119, 6, 0.1); color: var(--accent-primary); }
+    <div class="card">
+        <h1>Tracking Order</h1>
 
-        .map-legend {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            margin-bottom: 16px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-        .legend-color {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            border: 2px solid rgba(0,0,0,0.1);
-        }
+        <p><b>Kode Order:</b> {{ $order->order_code }}</p>
+        <p><b>Status:</b> {{ $order->status }}</p>
+        <p><b>Layanan:</b> {{ $order->service_type ?? '-' }}</p>
+        <p><b>Mode Layanan:</b> {{ $order->service_mode ?? 'onsite' }}</p>
+        <p><b>Problem:</b> {{ $order->problem ?? '-' }}</p>
+        <p><b>ETA:</b> {{ $order->eta ? $order->eta . ' menit' : '-' }}</p>
+    </div>
 
-        .details-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            margin-top: 24px;
-        }
-        .detail-card {
-            padding: 24px;
-        }
-        .detail-card h3 {
-            font-size: 16px;
-            margin-bottom: 20px;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .detail-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px dashed var(--border-color);
-        }
-        .detail-row:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-        .detail-row span:first-child {
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-        .detail-row span:last-child {
-            font-weight: 600;
-            color: var(--text-main);
-            text-align: right;
-            max-width: 60%;
-            word-wrap: break-word;
-        }
-    </style>
+    <div class="card">
+        <h2>Map Tracking dengan Routing Jalan</h2>
+        <p>
+            Marker biru = user, orange = mekanik, hijau = bengkel.
+            Garis rute diambil dari OSRM agar mengikuti jalan.
+        </p>
 
-    <div class="tracking-header">
-        <h1 style="font-size: 28px; font-weight: 700;">Tracking Order</h1>
-        <div class="actions">
-            <a href="{{ route('admin.orders.index') }}" class="btn btn-primary">
-                <i class="fa-solid fa-arrow-left"></i> Kembali
-            </a>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px;">
+            <div style="background:#eff6ff; padding:10px 14px; border-radius:12px;">
+                🔵 User
+            </div>
+
+            <div style="background:#fff7ed; padding:10px 14px; border-radius:12px;">
+                🟠 Mekanik
+            </div>
+
+            <div style="background:#f0fdf4; padding:10px 14px; border-radius:12px;">
+                🟢 Bengkel
+            </div>
+
+            <div style="background:#f9fafb; padding:10px 14px; border-radius:12px;">
+                <span id="activeRouteTitle">Rute Aktif</span>:
+                <b id="activeRouteDistance">-</b>
+                |
+                <span id="activeRouteDuration">-</span>
+            </div>
+        </div>
+
+        <div id="trackingMap" style="height: 460px; border-radius: 16px; overflow: hidden;"></div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Lokasi User</h3>
+            <p><b>Nama:</b> {{ $order->customer_name }}</p>
+            <p><b>No HP:</b> {{ $order->customer_phone ?? '-' }}</p>
+            <p><b>Latitude:</b> {{ $order->user_latitude }}</p>
+            <p><b>Longitude:</b> {{ $order->user_longitude }}</p>
+        </div>
+
+        <div class="card">
+            <h3>Lokasi Mekanik</h3>
+            <p><b>Nama:</b> {{ $order->mechanic_name ?? '-' }}</p>
+            <p><b>No HP:</b> {{ $order->mechanic_phone ?? '-' }}</p>
+            <p><b>Latitude:</b> {{ $order->mechanic_latitude }}</p>
+            <p><b>Longitude:</b> {{ $order->mechanic_longitude }}</p>
+        </div>
+
+        <div class="card">
+            <h3>Lokasi Bengkel</h3>
+            <p><b>Nama:</b> {{ $order->workshop_name ?? '-' }}</p>
+            <p><b>Alamat:</b> {{ $order->workshop_address ?? '-' }}</p>
+            <p><b>Latitude:</b> {{ $order->workshop_latitude }}</p>
+            <p><b>Longitude:</b> {{ $order->workshop_longitude }}</p>
+        </div>
+
+        <div class="card">
+            <h3>Biaya</h3>
+            <p><b>Biaya Dasar:</b> Rp {{ number_format($order->basic_cost, 0, ',', '.') }}</p>
+            <p><b>Total Biaya:</b> Rp {{ number_format($order->total_cost, 0, ',', '.') }}</p>
         </div>
     </div>
 
-    <div class="card" style="margin-bottom: 24px;">
-        <div class="order-info-grid">
-            <div class="info-box">
-                <div class="info-label">Kode Order</div>
-                <div class="info-value">{{ $order->order_code }}</div>
-            </div>
-            <div class="info-box">
-                <div class="info-label">Status</div>
-                <div class="info-value">
-                    <span class="badge badge-primary">{{ str_replace('_', ' ', $order->status) }}</span>
-                </div>
-            </div>
-            <div class="info-box">
-                <div class="info-label">Layanan</div>
-                <div class="info-value" style="text-transform: capitalize;">{{ $order->service_type ?? '' }} ({{ $order->service_mode ?? 'onsite' }})</div>
-            </div>
-            <div class="info-box" style="background: rgba(217, 119, 6, 0.05); border-color: rgba(217, 119, 6, 0.2);">
-                <div class="info-label" style="color: var(--accent-primary);" id="activeRouteTitle">Estimasi Jarak</div>
-                <div class="info-value">
-                    <span id="activeRouteDistance" style="color: var(--accent-primary); font-size: 22px;">-</span>
-                </div>
-            </div>
-            <div class="info-box" style="background: rgba(217, 119, 6, 0.05); border-color: rgba(217, 119, 6, 0.2);">
-                <div class="info-label" style="color: var(--accent-primary);">Estimasi Waktu</div>
-                <div class="info-value">
-                    <span id="activeRouteDuration" style="color: var(--accent-primary); font-size: 22px;">-</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card" style="margin-bottom: 24px; padding: 24px;">
-        <div class="map-legend">
-            <div class="legend-item">
-                <div class="legend-color" style="background: #2563eb;"></div> User
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #f97316;"></div> Mekanik
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #16a34a;"></div> Bengkel
-            </div>
-        </div>
-        <div id="trackingMap" style="height: 460px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color);"></div>
-    </div>
-
-    <div class="details-grid">
-        <div class="card detail-card">
-            <h3><i class="fa-solid fa-user"></i> Detail Lokasi User</h3>
-            <div class="detail-row"><span>Nama</span><span>{{ $order->customer_name }}</span></div>
-            <div class="detail-row"><span>No HP</span><span>{{ $order->customer_phone ?? '-' }}</span></div>
-            <div class="detail-row"><span>Latitude</span><span>{{ $order->user_latitude }}</span></div>
-            <div class="detail-row"><span>Longitude</span><span>{{ $order->user_longitude }}</span></div>
-        </div>
-
-        <div class="card detail-card">
-            <h3><i class="fa-solid fa-wrench"></i> Detail Mekanik</h3>
-            <div class="detail-row"><span>Nama</span><span>{{ $order->mechanic_name ?? '-' }}</span></div>
-            <div class="detail-row"><span>No HP</span><span>{{ $order->mechanic_phone ?? '-' }}</span></div>
-            <div class="detail-row"><span>Latitude</span><span>{{ $order->mechanic_latitude }}</span></div>
-            <div class="detail-row"><span>Longitude</span><span>{{ $order->mechanic_longitude }}</span></div>
-        </div>
-
-        <div class="card detail-card">
-            <h3><i class="fa-solid fa-warehouse"></i> Detail Bengkel</h3>
-            <div class="detail-row"><span>Nama</span><span>{{ $order->workshop_name ?? '-' }}</span></div>
-            <div class="detail-row"><span>Alamat</span><span>{{ $order->workshop_address ?? '-' }}</span></div>
-            <div class="detail-row"><span>Latitude</span><span>{{ $order->workshop_latitude }}</span></div>
-            <div class="detail-row"><span>Longitude</span><span>{{ $order->workshop_longitude }}</span></div>
-        </div>
-
-        <div class="card detail-card">
-            <h3><i class="fa-solid fa-receipt"></i> Rincian Biaya</h3>
-            <div class="detail-row"><span>Problem</span><span style="text-transform: capitalize;">{{ $order->problem ?? '-' }}</span></div>
-            <div class="detail-row"><span>Biaya Dasar</span><span>Rp {{ number_format($order->basic_cost, 0, ',', '.') }}</span></div>
-            <div class="detail-row" style="border-top: 2px solid var(--border-color); margin-top: 8px; padding-top: 16px;">
-                <span style="font-weight: 700; color: var(--text-main);">Total Biaya</span>
-                <span style="font-size: 20px; color: var(--accent-primary); font-weight: 800;">Rp {{ number_format($order->total_cost, 0, ',', '.') }}</span>
-            </div>
-        </div>
+    <div class="card">
+        <a href="{{ route('admin.orders.index') }}" class="btn btn-secondary">Kembali</a>
+        <a href="/api/orders/{{ $order->id }}/tracking" target="_blank" class="btn">Lihat API Tracking</a>
     </div>
 
     <link
