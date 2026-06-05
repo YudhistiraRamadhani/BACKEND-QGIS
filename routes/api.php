@@ -74,7 +74,7 @@ Route::delete('/users/{id}', [UserCrudController::class, 'destroy']);
     // --- Chat Room API ---
     Route::post('/chat-rooms', [ChatRoomController::class, 'store']);
     Route::get('/chat-rooms/{id}', [ChatRoomController::class, 'show']);
-
+Route::get('/chat-rooms', [ChatRoomController::class, 'index']);
     // --- Chat Message API ---
     Route::get('/chat-rooms/{chat_room_id}/messages', [ChatMessageController::class, 'index']);
     Route::post('/chat-messages', [ChatMessageController::class, 'store']);
