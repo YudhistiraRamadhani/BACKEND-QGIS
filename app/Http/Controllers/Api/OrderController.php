@@ -9,6 +9,61 @@ use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
+    public function index(Request $request)
+    {
+        $orders = DB::table('orders')
+            ->leftJoin('workshops', 'orders.workshop_id', '=', 'workshops.id')
+            ->leftJoin('mechanics', 'orders.mechanic_id', '=', 'mechanics.id')
+            ->leftJoin('users as mechanic_user', 'mechanics.user_id', '=', 'mechanic_user.id')
+            ->where('orders.user_id', auth()->id())
+            ->select(
+                'orders.id',
+                'orders.order_code',
+                'orders.status',
+                'orders.problem',
+                'orders.total_cost',
+                'orders.created_at',
+                'workshops.name as workshop_name',
+                'mechanic_user.name as mechanic_name'
+            )
+            ->orderByDesc('orders.created_at')
+            ->get();
+
+        return response()->json([
+            'message' => 'Daftar order berhasil diambil',
+            'data' => $orders,
+        ]);
+    }
+    public function show($id)
+    {
+        $order = DB::table('orders')
+            ->leftJoin('workshops', 'orders.workshop_id', '=', 'workshops.id')
+            ->leftJoin('mechanics', 'orders.mechanic_id', '=', 'mechanics.id')
+            ->leftJoin('users as mechanic_user', 'mechanics.user_id', '=', 'mechanic_user.id')
+            ->where('orders.id', $id)
+            ->where('orders.user_id', auth()->id()) // Memastikan hanya user pemilik order yang bisa melihat
+            ->select(
+                'orders.*',
+                'workshops.name as workshop_name',
+                'mechanic_user.name as mechanic_name',
+                'mechanic_user.phone as mechanic_phone',
+                DB::raw('ST_Y(orders.user_location::geometry) as user_latitude'),
+                DB::raw('ST_X(orders.user_location::geometry) as user_longitude')
+            )
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'message' => 'Order tidak ditemukan atau Anda tidak memiliki akses.',
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Detail order berhasil diambil',
+            'data' => $order,
+        ]);
+    }
+    
     public function store(Request $request)
     {
         $request->validate([

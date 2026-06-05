@@ -85,7 +85,8 @@ Route::delete('/users/{id}', [UserCrudController::class, 'destroy']);
     // --- Order Item API ---
     Route::get('/orders/{order_id}/items', [OrderItemController::class, 'index']);
     Route::post('/order-items', [OrderItemController::class, 'store']);
-
+Route::get('/orders', [OrderController::class, 'index']); // List semua order user
+    Route::get('/orders/{id}', [OrderController::class, 'show']);
     // --- Log API ---
     Route::get('/orders/{order_id}/logs', [LogController::class, 'index']);
 
