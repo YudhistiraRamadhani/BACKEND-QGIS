@@ -75,17 +75,18 @@ class AuthController extends Controller
         // Generate Bearer Token
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Login berhasil',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => [
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-            ]
-        ]);
+       return response()->json([
+    'success' => true,
+    'message' => 'Login berhasil',
+    'access_token' => $token,
+    'token_type' => 'Bearer',
+    'user' => [
+        'id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+        'role' => $user->role,
+    ]
+]);
     }
 
     public function logout(Request $request)
